@@ -6,6 +6,8 @@ import { Project, Group } from "../models";
 import { ADD_NEW_PROJECT_TO_FRONT, PROJECTS_KEY } from "../constants";
 import BaseService from './baseService';
 import ColorService from './colorService';
+import * as path from "path";
+import * as fs from "fs";
 
 export default class ProjectService extends BaseService {
 
@@ -64,6 +66,35 @@ export default class ProjectService extends BaseService {
         return [null, null];
     }
 
+    async getProjectScripts(projectId: string, projectFolder?: string): Promise<string[]> {
+        const project = this.getProject(projectId);
+        let root = project.path;
+        if (projectFolder) {
+            //project is a workspace file
+            const dirOfWorkspaceFile = path.dirname(project.path)
+            root = path.join(dirOfWorkspaceFile, projectFolder);
+        }
+
+        return await vscode.workspace.openTextDocument(path.join(root, "package.json")).then((document) => {
+            const packageJson = JSON.parse(document.getText());
+            const scripts = packageJson.scripts;
+            return Object.keys(scripts);
+        });
+
+    }
+
+    async getWorkspaceFolders(projectId: string): Promise<string[]> {
+        const project = this.getProject(projectId);
+        const isWorkspaceFile = !fs.statSync(project.path).isDirectory();
+        console.log("isWorkspaceFile ", isWorkspaceFile);
+        console.log("reading ", path.join(project.path, "package.json"))
+        if (isWorkspaceFile) {
+            const content = fs.readFileSync(project.path).toString();
+            const json = JSON.parse(content);
+            return json.folders.map(f => f.path);
+        }
+        throw new Error("Not a workspace file: " + project.path);
+    }
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ ADD ~~~~~~~~~~~~~~~~~~~~~~~~~
     async addGroup(groupName: string, projects: Project[] = null): Promise<Group> {
         var groups = this.getGroups();
@@ -157,7 +188,7 @@ export default class ProjectService extends BaseService {
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ REMOVE ~~~~~~~~~~~~~~~~~~~~~~~~~
     async removeProject(projectId: string): Promise<Group[]> {
         let groups = this.getGroups();
-        for (let i = 0; i < groups.length; i++) {
+        for (let i = 0;i < groups.length;i++) {
             let group = groups[i];
             let index = group.projects.findIndex(p => p.id === projectId);
 

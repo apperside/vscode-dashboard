@@ -14,6 +14,13 @@ function initProjects() {
         });
     }
 
+    function runScript(projectId, projectOpenType) {
+        window.vscode.postMessage({
+            type: 'run-script',
+            projectId
+        });
+    }
+
     function onAddProjectClicked(e) {
         if (!e.target)
             return;
@@ -230,6 +237,12 @@ function initProjects() {
         }
     }
 
+    function onRunScriptClicked(e, projectDiv) {
+        var actionDiv = e.target.closest('[data-action="run-script"]')
+        var dataId = actionDiv.getAttribute("data-id");
+        runScript(dataId);
+    }
+
     // Middle mouse button requires mousedown, as it does not fire click event when scroll option is available.
     document.addEventListener('click', (e) => {
         if (e.button !== 1) {
@@ -247,6 +260,13 @@ function initProjects() {
         .querySelectorAll('[data-action="add-project"]')
         .forEach(element =>
             element.addEventListener("click", onAddProjectClicked)
+        );
+
+    document
+        .querySelectorAll('[data-action="run-script"]')
+        .forEach(element => {
+            element.addEventListener("click", onRunScriptClicked)
+        }
         );
 
     document.addEventListener('contextmenu', (e) => {

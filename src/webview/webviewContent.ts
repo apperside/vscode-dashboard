@@ -219,6 +219,9 @@ function getProjectDiv(project: Project, infos: DashboardInfos) {
         }
             <span class="project-path" title="${trimmedPath}">${trimmedPath}</span>
         </p>
+        <div class="action-button-container" data-action="run-script"  data-id="${project.id}">
+            <button  id="btn-run-script">Run Script</button>
+        </div>
     </div>
 </div>`;
 }

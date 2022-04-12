@@ -1,6 +1,6 @@
 {
     "name": "vscode-dashboard",
-    "displayName": "Project Dashboard",
+    "displayName": "Project Dashboard 2",
     "description": "Organize your workspaces in a speed-dial manner.",
     "version": "2.5.1",
     "publisher": "kruemelkatze",
@@ -159,6 +159,7 @@
     },
     "scripts": {
         "vscode:prepublish": "webpack --mode production",
+        "package": "vsce package",
         "webpack": "webpack --mode development",
         "webpack-dev": "webpack --mode development --watch",
         "test-compile": "tsc -p ./",

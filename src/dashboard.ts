@@ -6,7 +6,7 @@ import { getSidebarContent, getDashboardContent } from './webview/webviewContent
 import { USE_PROJECT_COLOR, PREDEFINED_COLORS, StartupOptions, USER_CANCELED, FixedColorOptions, RelevantExtensions, SSH_REGEX, REMOTE_REGEX, SSH_REMOTE_PREFIX, REOPEN_KEY } from './constants';
 import { execSync } from 'child_process';
 import { lstatSync } from 'fs';
-
+import * as fs from "fs";
 import ColorService from './services/colorService';
 import ProjectService from './services/projectService';
 import FileService from './services/fileService';
@@ -199,6 +199,11 @@ export function activate(context: vscode.ExtensionContext) {
                         groupId = e.groupId as string;
                         await addProject(groupId);
                         break;
+                    case 'run-script': {
+                        projectId = e.projectId as string;
+                        await runNpmScript(projectId);
+                        break;
+                    }
                     case 'reordered-projects':
                         let groupOrders = e.groupOrders as GroupOrder[];
                         await reorderGroups(groupOrders);
@@ -413,6 +418,32 @@ export function activate(context: vscode.ExtensionContext) {
         } else if (isNewWorkSpace) {
             context.globalState.update(REOPEN_KEY, ReopenDashboardReason.EditorReopenedAsWorkspace);
             instance.dispose();
+        }
+    }
+
+    async function runNpmScript(projectId: any) {
+        const project = await projectService.getProject(projectId)
+        let cwd = project.path;
+        const isWorkspaceFile = !fs.statSync(project.path).isDirectory();
+        let folder: string | undefined = undefined;
+        if (isWorkspaceFile) {
+            folder = await queryProjectInWorkspace(projectId)
+            const dirOfWorkspaceFile = path.dirname(project.path);
+            cwd = path.join(dirOfWorkspaceFile, folder);
+        }
+        const script = await queryNpmScripts(projectId, folder);
+
+        const terminal = vscode.window.createTerminal({
+            name: "Dashboard command - " + script,
+            cwd,
+            hideFromUser: false,
+        });
+        if (terminal) {
+            terminal.show();
+            terminal.sendText("yarn " + script, true)
+        }
+        else {
+            vscode.window.showErrorMessage("Could not create terminal")
         }
     }
 
@@ -721,6 +752,46 @@ export function activate(context: vscode.ExtensionContext) {
         let colorText = colorName ? `${colorName}    (${colorCode})` : colorCode;
 
         return colorText;
+    }
+
+    async function queryNpmScripts(projectId: any, projectFolder?: string) {
+        let scripts = await projectService.getProjectScripts(projectId, projectFolder);
+        let scriptPicks = scripts.map((script, index) => {
+            return {
+                id: `script_${index}`,
+                label: script,
+            }
+        });
+
+        let selectedScriptPick = await vscode.window.showQuickPick(scriptPicks, {
+            placeHolder: "NPM Script",
+        });
+
+        if (selectedScriptPick == null) {
+            throw new Error(USER_CANCELED);
+        }
+
+        return selectedScriptPick.label;
+    }
+
+    async function queryProjectInWorkspace(projectId: any) {
+        let folders = await projectService.getWorkspaceFolders(projectId);
+        let scriptPicks = folders.map((folder, index) => {
+            return {
+                id: `folder_${index}`,
+                label: folder,
+            }
+        });
+
+        let selectedScriptPick = await vscode.window.showQuickPick(scriptPicks, {
+            placeHolder: "Select a project in the workspace",
+        });
+
+        if (selectedScriptPick == null) {
+            throw new Error(USER_CANCELED);
+        }
+
+        return selectedScriptPick.label;
     }
 
     async function queryProjectColor(isEditing: boolean, projectTemplate: { color?: string } = null): Promise<string> {
